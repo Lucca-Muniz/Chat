@@ -355,8 +355,8 @@
     <script>
         class FinancialChatApp {
             constructor() {
-                this.apiUrl = 'http://localhost:5197/api'; // Adjust this to your API URL
-                this.hubUrl = 'http://localhost:5197/chathub'; // Adjust this to your SignalR hub URL
+                this.apiUrl = 'http://localhost:5017/api'; // Adjust this to your API URL
+                this.hubUrl = 'http://localhost:5017/chathub'; // Adjust this to your SignalR hub URL
                 this.token = localStorage.getItem('authToken');
                 this.currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
                 this.connection = null;
@@ -398,17 +398,9 @@
                 this.showRegisterBtn.addEventListener('click', () => this.showRegisterForm());
                 this.showLoginBtn.addEventListener('click', () => this.showLoginForm());
                 this.logoutBtn.addEventListener('click', () => this.handleLogout());
-                this.sendButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('Send button clicked');
-                    this.sendMessage();
-                });
+                this.sendButton.addEventListener('click', () => this.sendMessage());
                 this.messageInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        console.log('Enter pressed');
-                        this.sendMessage();
-                    }
+                    if (e.key === 'Enter') this.sendMessage();
                 });
             }
 
@@ -438,7 +430,7 @@
                 this.loginForm.classList.add('hidden');
                 this.registerForm.classList.add('hidden');
                 this.chatInterface.classList.remove('hidden');
-                this.welcomeUser.textContent = Welcome, ${this.currentUser.username}!;
+                this.welcomeUser.textContent = `Welcome, ${this.currentUser.username}!`;
                 this.initializeSignalR();
             }
 
@@ -484,7 +476,7 @@
                 const password = document.getElementById('loginPassword').value;
 
                 try {
-                    const response = await fetch(${this.apiUrl}/auth/login, {
+                    const response = await fetch(`${this.apiUrl}/auth/login`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -525,7 +517,7 @@
                 const password = document.getElementById('registerPassword').value;
 
                 try {
-                    const response = await fetch(${this.apiUrl}/auth/register, {
+                    const response = await fetch(`${this.apiUrl}/auth/register`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -567,52 +559,37 @@
 
             async initializeSignalR() {
                 try {
-                    console.log('Initializing SignalR connection...');
-                    console.log('Hub URL:', this.hubUrl);
-                    console.log('Token:', this.token ? 'Present' : 'Missing');
-
                     this.connection = new signalR.HubConnectionBuilder()
                         .withUrl(this.hubUrl, {
-                            accessTokenFactory: () => {
-                                console.log('Token factory called, returning token:', this.token ? 'Present' : 'Missing');
-                                return this.token;
-                            }
+                            accessTokenFactory: () => this.token
                         })
                         .withAutomaticReconnect()
-                        .configureLogging(signalR.LogLevel.Information)
                         .build();
 
                     this.connection.on("ReceiveMessage", (message) => {
-                        console.log('Received message:', message);
                         this.displayMessage(message);
                     });
 
                     this.connection.on("LoadRecentMessages", (messages) => {
-                        console.log('Loading recent messages:', messages);
                         this.chatMessages.innerHTML = '';
                         messages.forEach(message => this.displayMessage(message));
                         this.scrollToBottom();
                     });
 
                     this.connection.onreconnecting(() => {
-                        console.log('SignalR reconnecting...');
                         this.updateConnectionStatus('Reconnecting...', 'disconnected');
                     });
 
                     this.connection.onreconnected(() => {
-                        console.log('SignalR reconnected');
                         this.updateConnectionStatus('Connected', 'connected');
                         this.joinChatRoom();
                     });
 
-                    this.connection.onclose((error) => {
-                        console.log('SignalR connection closed:', error);
+                    this.connection.onclose(() => {
                         this.updateConnectionStatus('Disconnected', 'disconnected');
                     });
 
-                    console.log('Starting SignalR connection...');
                     await this.connection.start();
-                    console.log('SignalR connection started successfully');
                     this.updateConnectionStatus('Connected', 'connected');
                     await this.joinChatRoom();
 
@@ -625,46 +602,31 @@
             async joinChatRoom() {
                 if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
                     try {
-                        console.log('Joining chat room:', this.chatRoomId);
                         await this.connection.invoke("JoinChatRoom", this.chatRoomId);
-                        console.log('Successfully joined chat room');
                     } catch (error) {
                         console.error('Error joining chat room:', error);
                     }
-                } else {
-                    console.error('Cannot join chat room - not connected');
                 }
             }
 
             updateConnectionStatus(text, className) {
                 this.connectionStatus.textContent = text;
-                this.connectionStatus.className = connection-status ${className};
+                this.connectionStatus.className = `connection-status ${className}`;
             }
 
             async sendMessage() {
-                console.log('sendMessage called');
                 const message = this.messageInput.value.trim();
-                console.log('Message:', message);
-
-                if (!message) {
-                    console.log('Empty message, returning');
-                    return;
-                }
-
-                console.log('Connection state:', this.connection ? this.connection.state : 'No connection');
+                if (!message) return;
 
                 if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
                     try {
-                        console.log('Invoking SendMessage with:', message, this.chatRoomId);
                         await this.connection.invoke("SendMessage", message, this.chatRoomId);
                         this.messageInput.value = '';
-                        console.log('Message sent successfully');
                     } catch (error) {
                         console.error('Error sending message:', error);
                         alert('Failed to send message. Please try again.');
                     }
                 } else {
-                    console.error('Not connected to chat');
                     alert('Not connected to chat. Please refresh the page.');
                 }
             }
@@ -688,10 +650,10 @@
                 const timestamp = new Date(message.timestamp).toLocaleTimeString();
                 const displayName = isBot ? '🤖 StockBot' : message.username;
 
-                messageElement.innerHTML =
+                messageElement.innerHTML = `
                         <div class="message-info">${displayName} - ${timestamp}</div>
                         <div>${this.escapeHtml(message.content)}</div>
-                    ;
+                    `;
 
                 this.chatMessages.appendChild(messageElement);
                 this.scrollToBottom();
@@ -708,6 +670,7 @@
             }
         }
 
+        // Initialize the application when the page loads
         document.addEventListener('DOMContentLoaded', () => {
             new FinancialChatApp();
         });

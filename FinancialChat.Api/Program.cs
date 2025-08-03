@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR(options =>
 {
-    options.EnableDetailedErrors = true; // Enable detailed errors for debugging
+    options.EnableDetailedErrors = true; 
 });
 
 // Logging
@@ -127,7 +127,7 @@ builder.Services.AddSingleton<IConnection>(sp =>
 
 // Services
 builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
-builder.Services.AddScoped<IStockCommandPublisher, RabbitMqStockCommandPublisher>();
+builder.Services.AddSingleton<IStockCommandPublisher, RabbitMqStockCommandPublisher>();
 builder.Services.AddHttpClient<IStockService, StockService>();
 builder.Services.AddHostedService<StockResponseConsumer>();
 
